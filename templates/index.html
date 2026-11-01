@@ -1,0 +1,236 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Car Price Predictor</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+
+    <link rel="stylesheet"
+          href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+
+    <style>
+        body {
+            background: #343a40;
+        }
+
+        .card {
+            margin-top: 50px;
+            margin-bottom: 50px;
+            border-radius: 12px;
+        }
+
+        .form-group {
+            margin: 20px auto;
+            text-align: center;
+        }
+
+        #prediction {
+            text-align: center;
+            color: #007bff;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+    <div class="row">
+        <div class="card w-100">
+
+            <div class="card-header text-center">
+                <h1>Welcome to Car Price Predictor</h1>
+            </div>
+
+            <div class="card-body">
+
+                <div class="text-center">
+                    <h5>Enter your car details to predict its price.</h5>
+                </div>
+
+                <form id="carForm">
+
+                    <!-- Company -->
+                    <div class="col-md-10 form-group">
+                        <label><b>Select Company:</b></label>
+
+                        <select class="form-control"
+                                id="company"
+                                name="company"
+                                required
+                                onchange="loadModels()">
+
+                            {% for company in companies %}
+                            <option value="{{ company }}">{{ company }}</option>
+                            {% endfor %}
+
+                        </select>
+                    </div>
+
+                    <!-- Car Model -->
+                    <div class="col-md-10 form-group">
+                        <label><b>Select Car Model:</b></label>
+
+                        <select class="form-control"
+                                id="car_models"
+                                name="car_models"
+                                required>
+
+                            <option value="">Select Model</option>
+
+                        </select>
+                    </div>
+
+                    <!-- Year -->
+                    <div class="col-md-10 form-group">
+                        <label><b>Select Year:</b></label>
+
+                        <select class="form-control"
+                                id="year"
+                                name="year"
+                                required>
+
+                            <option value="">Select Year</option>
+
+                            {% for year in years %}
+                            <option value="{{ year }}">{{ year }}</option>
+                            {% endfor %}
+
+                        </select>
+                    </div>
+
+                    <!-- Fuel -->
+                    <div class="col-md-10 form-group">
+                        <label><b>Select Fuel Type:</b></label>
+
+                        <select class="form-control"
+                                id="fuel_type"
+                                name="fuel_type"
+                                required>
+
+                            <option value="">Select Fuel</option>
+
+                            {% for fuel in fuel_types %}
+                            <option value="{{ fuel }}">{{ fuel }}</option>
+                            {% endfor %}
+
+                        </select>
+                    </div>
+
+                    <!-- Kilometres -->
+                    <div class="col-md-10 form-group">
+                        <label><b>Enter Kilometres Driven:</b></label>
+
+                        <input type="number"
+                               class="form-control"
+                               id="kilo_driven"
+                               name="kilo_driven"
+                               min="0"
+                               placeholder="Enter kilometres"
+                               required>
+                    </div>
+
+                    <!-- Predict Button -->
+                    <div class="col-md-10 form-group">
+                        <button type="submit"
+                                class="btn btn-primary form-control"
+                                id="predictButton">
+                            Predict Price
+                        </button>
+                    </div>
+
+                </form>
+
+                <h4 id="prediction"></h4>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+
+    // All car models grouped by company
+    const carModels = {{ car_models | tojson }};
+    const carCompanies = {{ companies | tojson }};
+
+    function loadModels() {
+
+        const company = document.getElementById("company").value;
+        const modelSelect = document.getElementById("car_models");
+
+        modelSelect.innerHTML = '<option value="">Select Model</option>';
+
+        carModels.forEach(function(model) {
+
+            // Match the company using dataset information
+            // Company is determined by the selected company prefix
+            if (model.toLowerCase().startsWith(company.toLowerCase())) {
+                const option = document.createElement("option");
+                option.value = model;
+                option.textContent = model;
+                modelSelect.appendChild(option);
+            }
+
+        });
+
+    }
+
+
+    // Submit form to Flask
+    document.getElementById("carForm").addEventListener("submit", async function(event) {
+
+        event.preventDefault();
+
+        const form = this;
+        const result = document.getElementById("prediction");
+        const button = document.getElementById("predictButton");
+
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        const formData = new FormData(form);
+
+        result.textContent = "Predicting price...";
+        button.disabled = true;
+
+        try {
+
+            const response = await fetch("/predict", {
+                method: "POST",
+                body: formData
+            });
+
+            const data = await response.text();
+
+            if (!response.ok) {
+                throw new Error(data);
+            }
+
+            result.textContent = "Prediction: ₹" +
+                Number(data).toLocaleString("en-IN");
+
+        } catch(error) {
+
+            result.textContent = "Error: " + error.message;
+
+        } finally {
+
+            button.disabled = false;
+
+        }
+
+    });
+
+</script>
+
+</body>
+</html>
